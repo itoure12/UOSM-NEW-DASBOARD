@@ -1,0 +1,12 @@
+# Résultats de build
+build/
+cmake-build-*/
+*.elf
+*.bin
+*.hex
+*.map
+
+# IDE (réglages perso)
+.idea/
+.vscode/
+*.user
