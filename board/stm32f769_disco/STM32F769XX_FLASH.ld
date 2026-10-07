@@ -55,8 +55,10 @@ ENTRY(Reset_Handler)
 /* Specify the memory areas */
 MEMORY
 {
-RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 512K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 2048K
+RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 480K
+ETH_HEAP (rw)  : ORIGIN = 0x20078000, LENGTH = 16K   /* heap LwIP, MPU non caché */
+ETH_DESC (rw)  : ORIGIN = 0x2007C000, LENGTH = 16K   /* SRAM2, descripteurs DMA Ethernet, MPU device */
+FLASH (rx)     : ORIGIN = 0x8000000,  LENGTH = 2048K
 }
 
 /* Highest address of the user mode stack */
@@ -236,6 +238,21 @@ SECTIONS
     . = ALIGN(8);
   } >RAM
 
+
+  
+  /* Descripteurs DMA Ethernet : noms de sections définis dans LWIP/Target/ethernetif.c */
+  .eth_desc (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.RxDecripSection)
+    *(.TxDecripSection)
+  } >ETH_DESC
+
+  /* Heap LwIP : adresse fixe LWIP_RAM_HEAP_POINTER, on réserve la zone pour que rien d'autre n'y aille */
+  .eth_heap (NOLOAD) :
+  {
+    . = . + LENGTH(ETH_HEAP);
+  } >ETH_HEAP
 
 
   /* Remove information from the standard libraries */
