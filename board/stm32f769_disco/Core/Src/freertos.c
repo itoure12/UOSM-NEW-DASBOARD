@@ -25,7 +25,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+/* TEST PONT UART PORTENTA (étape 1) : temporaire */
+#include <stdio.h>
+#include "usart.h"   /* huart1 : debug vers COM8, huart6 : liaison avec le Portenta */
+#include "queue.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,7 +48,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+static QueueHandle_t rxQueue;   /* caractères reçus sur USART6, de l'interruption vers la tâche */
+static uint8_t rxByte;          /* la HAL y dépose chaque octet reçu */
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
 
@@ -99,6 +103,7 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
+  rxQueue = xQueueCreate(256, sizeof(uint8_t));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -124,17 +129,59 @@ void StartDefaultTask(void const * argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN StartDefaultTask */
-  /* Infinite loop */
+  /* TEST PONT UART PORTENTA (étape 1) : affiche sur COM8 chaque ligne reçue sur USART6 */
+  char line[128];   /* ligne en cours de construction */
+  size_t len = 0;
+  char out[160];    /* message envoyé sur COM8 */
+
+  HAL_UART_Receive_IT(&huart6, &rxByte, 1);   /* lance la réception du premier octet */
+
   for(;;)
   {
-    HAL_GPIO_TogglePin(GPIOJ, GPIO_PIN_5);   // LED verte LD2
-    osDelay(500);                            // 500 ms
+    uint8_t c;
+    if (xQueueReceive(rxQueue, &c, portMAX_DELAY) != pdTRUE)
+      continue;
+
+    if (c == '\r')
+      continue;                               /* println() envoie "\r\n" : on ignore le '\r' */
+
+    if (c == '\n')                            /* fin de ligne */
+    {
+      line[len] = '\0';
+      int n = snprintf(out, sizeof(out), "RECU : %s\r\n", line);
+      HAL_UART_Transmit(&huart1, (uint8_t*)out, n, 100);
+      HAL_GPIO_TogglePin(GPIOJ, GPIO_PIN_5); /* la LED change d'état à chaque ligne reçue */
+      len = 0;
+    }
+    else if (len < sizeof(line) - 1)          /* - 1 : garder la place du '\0' */
+    {
+      line[len++] = (char)c;
+    }
   }
   /* USER CODE END StartDefaultTask */
 }
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+/* Appelée par la HAL, en interruption, quand l'octet demandé par HAL_UART_Receive_IT est arrivé */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart == &huart6)
+  {
+    BaseType_t woken = pdFALSE;
+    xQueueSendFromISR(rxQueue, &rxByte, &woken);   /* en interruption : toujours la version FromISR */
+    HAL_UART_Receive_IT(&huart6, &rxByte, 1);      /* relance la réception de l'octet suivant */
+    portYIELD_FROM_ISR(woken);                     /* réveille la tâche tout de suite si elle attendait */
+  }
+}
 
+/* Appelée par la HAL en cas d'erreur de réception (ex. overrun) : sans relance, la réception s'arrêterait */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  if (huart == &huart6)
+  {
+    HAL_UART_Receive_IT(&huart6, &rxByte, 1);
+  }
+}
 /* USER CODE END Application */
 

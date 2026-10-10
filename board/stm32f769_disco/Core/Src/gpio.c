@@ -50,9 +50,7 @@
      PI11   ------> USB_OTG_HS_ULPI_DIR
      PA8   ------> RCC_MCO_1
      PC8   ------> S_TIM3_CH3
-     PC7   ------> USART6_RX
      PH4   ------> USB_OTG_HS_ULPI_NXT
-     PC6   ------> USART6_TX
      PF7   ------> S_TIM11_CH1
      PF6   ------> S_TIM10_CH1
      PB13   ------> USB_OTG_HS_ULPI_D6
@@ -248,14 +246,6 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
   HAL_GPIO_Init(ARD_D5_PWM_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : ARD_D0_RX_Pin ARDUINO_TX_D1_Pin */
-  GPIO_InitStruct.Pin = ARD_D0_RX_Pin|ARDUINO_TX_D1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF8_USART6;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : ULPI_NXT_Pin */
   GPIO_InitStruct.Pin = ULPI_NXT_Pin;
