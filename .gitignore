@@ -10,3 +10,5 @@ cmake-build-*/
 .idea/
 .vscode/
 *.user
+# Identifiants Wi-Fi / broker du sketch Portenta (copier arduino_secrets.h.example)
+tools/portenta_bridge/arduino_secrets.h
