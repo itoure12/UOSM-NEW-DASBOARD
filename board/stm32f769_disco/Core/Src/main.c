@@ -203,7 +203,22 @@ void PeriphCommonClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+/*
+ * printf() output -> USART1, the ST-LINK virtual COM port (115200 baud).
+ * Core/Src/syscalls.c sends every printf() character through __io_putchar(),
+ * declared weak: without this definition, the first printf() would crash.
+ */
+int __io_putchar(int ch)
+{
+  uint8_t c = (uint8_t)ch;
+  if (c == '\n')
+  {
+    uint8_t cr = '\r';   /* terminals expect "\r\n" line endings */
+    HAL_UART_Transmit(&huart1, &cr, 1, 10);
+  }
+  HAL_UART_Transmit(&huart1, &c, 1, 10);
+  return ch;
+}
 /* USER CODE END 4 */
 
  /* MPU Configuration */

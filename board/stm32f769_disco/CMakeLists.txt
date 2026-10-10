@@ -42,20 +42,31 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
 
+# Repository root (this project lives in board/stm32f769_disco/)
+set(UOSM_ROOT ${CMAKE_SOURCE_DIR}/../..)
+
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
+    ${UOSM_ROOT}/app/comms/mqtt/mqtt_topics.c   # topic table
+    ${UOSM_ROOT}/app/comms/mqtt/mqtt_decode.c   # decoder
+    # mqtt_client.c (MQTT over Ethernet) left out: Ethernet is not used for now
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
+    ${UOSM_ROOT}/app/comms/mqtt
 )
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
 )
+
+# printf("%f") support: newlib-nano (--specs=nano.specs) leaves it out by default,
+# and the decoder prints decimal values
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE -u _printf_float)
 
 # Remove wrong libob.a library dependency when using cpp files
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)

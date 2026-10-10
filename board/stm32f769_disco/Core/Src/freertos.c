@@ -25,10 +25,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-/* TEST PONT UART PORTENTA (étape 1) : temporaire */
-#include <stdio.h>
-#include "usart.h"   /* huart1 : debug vers COM8, huart6 : liaison avec le Portenta */
+#include <stdbool.h>
+#include <string.h>
+#include "usart.h"        /* huart6 : liaison avec le pont Wi-Fi (Portenta) */
 #include "queue.h"
+#include "mqtt_topics.h"  /* table des topics : mqtt_topics_dispatch() */
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -129,10 +130,14 @@ void StartDefaultTask(void const * argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN StartDefaultTask */
-  /* TEST PONT UART PORTENTA (étape 1) : affiche sur COM8 chaque ligne reçue sur USART6 */
-  char line[128];   /* ligne en cours de construction */
+  /* MQTT par Ethernet coupé pour l'instant : le client (app/comms/mqtt/mqtt_client.c)
+   * n'est ni compilé ni démarré. Les données arrivent seulement par le pont Wi-Fi. */
+
+  /* Pont Wi-Fi (Portenta) : chaque ligne "topic valeur" reçue sur USART6 est
+   * passée à la table des topics, comme le ferait un client MQTT. */
+  char line[128];        /* ligne en cours de construction */
   size_t len = 0;
-  char out[160];    /* message envoyé sur COM8 */
+  bool overflow = false; /* ligne trop longue : on la jette entière jusqu'au '\n' */
 
   HAL_UART_Receive_IT(&huart6, &rxByte, 1);   /* lance la réception du premier octet */
 
@@ -148,14 +153,24 @@ void StartDefaultTask(void const * argument)
     if (c == '\n')                            /* fin de ligne */
     {
       line[len] = '\0';
-      int n = snprintf(out, sizeof(out), "RECU : %s\r\n", line);
-      HAL_UART_Transmit(&huart1, (uint8_t*)out, n, 100);
+      char *space = memchr(line, ' ', len);   /* sépare "topic" et "valeur" au 1er espace */
+      if (!overflow && space != NULL && space != line)
+      {
+        *space = '\0';                        /* la table attend un topic terminé par '\0' */
+        size_t value_len = len - (size_t)(space - line) - 1;
+        mqtt_topics_dispatch(line, space + 1, value_len);
+      }
       HAL_GPIO_TogglePin(GPIOJ, GPIO_PIN_5); /* la LED change d'état à chaque ligne reçue */
       len = 0;
+      overflow = false;
     }
     else if (len < sizeof(line) - 1)          /* - 1 : garder la place du '\0' */
     {
       line[len++] = (char)c;
+    }
+    else
+    {
+      overflow = true;                        /* jamais de ligne tronquée : valeur fausse */
     }
   }
   /* USER CODE END StartDefaultTask */
